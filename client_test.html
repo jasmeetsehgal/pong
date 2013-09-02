@@ -1,0 +1,294 @@
+<html>
+   <head>
+
+ 
+     <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,inimum-scale = 1, maximum-scale = 1,user-scalable=no" >
+  <link rel="stylesheet" href="http://code.jquery.com/mobile/1.0a3/jquery.mobile-1.0a3.min.css" />
+    <title>Controller</title>
+       
+      <script src="http://code.jquery.com/jquery-1.6.2.min.js"></script>
+         <script src="http://banners.stageweb01.alphasalmonstaging.com/Jass/socket.io-client/dist/socket.io.js"></script>
+<script src="http://cdn.jquerytools.org/1.2.6/all/jquery.tools.min.js"></script>	
+ <script src="http://code.jquery.com/mobile/1.0b2/jquery.mobile-1.0b2.min.js"></script>
+
+
+       <script src="verticalSlider.js"></script> 
+      
+        <script type="text/javascript">
+		function WebSocketTest()		
+			{ return true;
+			  if (window.hasOwnProperty('WebSockets'))
+			  {
+			     return true;
+			  }
+			  else
+			  {
+			    alert("Your browser does not support HTML5 Web Sockets.");
+				return false;
+			  }
+			}
+		function parseObject(obj){
+				var str=""
+				for(var i in obj){
+					str += i +" "+obj[i] + " , ";
+					}
+					return str;
+			}
+		function calcQueue(clientsID){
+			var ind=-2;
+				for(var i in clientsID){
+					ind++;
+					if(clientsID[i].id == myid){
+							return ind;	
+						}
+					}
+				return ind;	
+			}
+		function register(e){
+			myname = $('#nameBox').val();
+			if(myname == ""){
+				$('.error').show();
+				e.preventDefault();
+				return false;
+				}
+				
+			socket.emit('register', myname );			
+			$("#loginbox").data('overlay').close();
+			clearTimeout(timeoutDisconnect);
+			$('.error').hide();
+			}
+		function timeoutDis(){
+			clearTimeout(timeoutDisconnect);
+			timeoutDisconnect = setTimeout(function(){
+					$("p#data_recieved").prepend('<br /> i am disconnect after +idelTtimeOut+ as idle');
+					$("#loginbox,#stGame").data('overlay').close();
+					
+					disconnectMe();
+					},idelTtimeOut);/**/
+			}
+			
+         var myname = '';
+		 var myid=0;
+		  var queueCount=0;
+		 var timeoutDisconnect=0;
+		 var idelTtimeOut=60000;
+		 //alert(io);
+       
+		  var socket = io.connect('http://10.201.11.173:8080/pingpong',{'flash policy port':10843,'reconnect':false});
+       $(document).ready(function(){
+		   $("#loginbox,#stGame").overlay({	mask: {color: '#fff',loadSpeed: 200,opacity: 0.5},closeOnClick: false,load:false});
+		   $('#nameBox').focus(function(e){
+			   if($(this).val() == "player name"){
+				   $(this).val("");
+				   }
+			   });
+		    if( WebSocketTest() ) {				
+	             
+			      socket.on('connect', function () {
+					 	//alert('connected'); 
+					   timeoutDis();
+				$("#loginbox,").data('overlay').load();
+				  });
+				  socket.on('error', function (reason){
+					 alert('Unable to connect Socket.IO', reason);
+					});
+			}
+						
+			 $( "#sliderRange" ).bind( "change", function(event, ui) {
+					showValue($( "#sliderRange" ).val());
+			});        
+         });
+
+         socket.on('message', function (data) {			 
+		 	 $("p#data_recieved").prepend("<br/> from server "+ parseObject(data) + "  -- "+ data.msg);
+			 // return;			
+			//	socket.disconnect();
+				if(data.msg == 'GAMEOVER'){
+					if(data.id == myid){
+	                 	$("p#data_recieved").prepend('<br/>' +"game over - Refresh to play again");
+					 	 socket.disconnect();
+					}
+				}else if(data.msg == "CPLAYER_DISCONNECT"){
+					//$("p#data_recieved").prepend('<br/>' +"be ready to play "  + data.nextId );
+					if(data.nextId == myid){					
+		                $("#stGame").data('overlay').load();	
+						timeoutDis();                 
+						$("p#data_queue").html("you are playing"); 
+		            }else{
+					 $("p#data_queue").html("you are  "+calcQueue(data.clients) + " in the queue.");
+					}		
+									  				
+				}else if(data.msg == "QUEUE_NO"){	
+						queueCount = data.count;
+                		 $("p#data_queue").html("you are  "+data.count + " in queue.");
+				}else{	
+							
+			 	}
+			
+         });
+        socket.on('disconnect', function () {
+			$("p#data_queue").html("you are disconnected");
+          $("p#data_recieved").prepend('<br/> i am disconnected ::' +myname + ': ' + myid);
+		  	myname = "";
+			myid = 0;
+			$("#loginbox").data('overlay').close();	
+			$('.ondisconnect').show();
+        });
+		 socket.on('register', function (data) {
+			 if(myid == 0){
+				myname = data.name;
+				myid = data.sid;
+				 $("p#data_queue").prepend('my name and id ' +data.name + ': ' + data.sid);
+			}
+            $("p#data_recieved").prepend('<br/> my name and id ' +myname + ': ' + myid+ ' :: registered ' +data.name + ': ' + data.sid);
+			$("p#data_queue").html("you are  "+calcQueue(data.clients) + " in queue.");
+            //$("p#message").append(data.msgr + ': ' + data.msg);
+		});
+	
+		socket.on('unregister', function (data) {
+			 if(myid == data.sid){
+					myname = "";
+					myid = 0;
+					$("#loginbox").data('overlay').close();
+			 }
+			 $("p#data_recieved").prepend('<br/> unregistered from server ' +data.name + ': ' + data.sid);
+            //$("p#message").append(data.msgr + ': ' + data.msg);
+		});
+
+		socket.on('winner', function (data) {
+			$("p#data_recieved").prepend("<br/> from server "+ parseObject(data) + "  -- "+ data.msg);
+			if(myid == data.sid){
+			clearTimeout(timeoutDisconnect);
+			 socket.disconnect();
+		   	$("p#data_recieved").prepend('<br/>' + "Congratulations you are the winner :: coupon code " + data.msg);
+			}
+		});
+		
+       		
+		function disconnectMe(){
+		 socket.disconnect();	
+		}
+      </script>
+
+      <style type="text/css">
+     body{
+			font-family:Arial, Helvetica, sans-serif; 
+		 }
+	label.ui-slider-horizontal label.ui-slider-vertical { display: block; }
+	div.ui-slider-horizontal { position: relative; display: inline-block; overflow: visible; height: 15px; padding: 0; margin: 0 2% 0 20px; top: 4px; width:15px ; }
+	div.ui-slider-vertical { position: relative; display: block; overflow: visible; height: 400px; padding: 0; margin: 0 2% 0 20px; top: 4px; width:15px ;margin:20px auto 0; }
+	a.ui-slider-handle-vertical { position: absolute; z-index: 10;  top: 50%; width: 80px; height: 28px; margin-top: -15px; margin-left: -32px; }
+	a.ui-slider-handle-horizontal { position: absolute; z-index: 10;  top: 50%; width: 28px; height: 28px; margin-top: -15px; margin-left: -15px; }
+	a.ui-slider-handle-horizontal a.ui-slider-handle-vertical .ui-btn-inner { padding-left: 0; padding-right: 0; }
+	.min-width-480px label.ui-slider-horizontal { display: inline-block;  width: 20%;  margin: 0 2% 0 0; }
+	.min-width-480px div.ui-slider-horizontal { width: 45%; }
+	label.ui-slider-vertical { display: inline-block;  width: 20%;  margin: 0 2% 0 0; }
+	 div.ui-slider-vertical { width: 15px; }
+	 
+	 .overlay {
+
+		display:none;
+
+		width:300px;
+		border:10px solid #666;
+
+		border:10px solid rgba(82, 82, 82, 0.698);
+
+		-moz-border-radius:8px;
+		-webkit-border-radius:8px;
+	}
+
+	.overlay div {
+		padding:10px;
+		border:1px solid #3B5998;
+		background-color:#fff;
+		font-family:"lucida grande",tahoma,verdana,arial,sans-serif
+	}
+
+	.overlay h2 {
+		margin:-11px;
+		margin-bottom:0px;
+		color:#fff;
+		background-color:#6D84B4;
+		padding:5px 10px;
+		border:1px solid #3B5998;
+		font-size:20px;
+	}
+.ondisconnect{
+		 display:none;
+		 }
+.refresh-btn{
+		 float:right;position:relative;z-index:9999;
+		 color:#F00;
+		 font-weight:bold;
+		 text-align:center;
+		 }
+	 .error{
+		 font-size:11px;
+		 color:#F00;
+		 display:none;
+		 }
+	 #data_recieved{
+		 position:absolute;
+		 top:20px;
+		 left:0;
+		 width:100%;
+		 height:100%;
+		 }
+      </style>
+   </head>
+   <body class="ui-mobile-viewport">
+
+   <div data-role="page" data-url="" class="ui-page ui-body-c ui-page-active"> 
+   <p id="data_queue"></p>
+   <p id="data_recieved"></p>
+    <input style="display:none;" type="number" id='sliderRange' data-type="range" min="0" max="528" value="264" step="1" sliderorientation="vertical" 
+    class="ui-slider-input ui-input-text ui-body-null ui-corner-all ui-shadow-inset ui-body-c">
+</div>
+     
+
+        <a href="javascript:disconnectMe();window.location.href=window.location.href;"  class="refresh-btn" >
+        <img style="border:0 none;" src="refresh.png" width="100" alt="Refresh" /><br>
+        <span class="ondisconnect">Click here !</span>
+        </a>
+        <script type="text/javascript">
+            function showValue(newValue) {
+				socket.emit('posData', newValue);
+				
+				//timeoutDis();
+            }
+			
+			
+        </script>
+         
+          <div id="stGame" class="overlay">
+         
+		         <div>
+				<h2>startGame</h2>							
+				<p>
+					<button class="close" onClick="register();"> Start Game </button>
+				</p>
+			</div>
+         </div>
+         <div id="loginbox" class="overlay">
+         
+		         <div>
+				<h2>Login</h2>
+		
+				<p>
+					Please enter your name below;
+				</p>
+		
+				
+				<input type="text" id="nameBox" value="player name">
+				
+				<p>
+                	<span class="error">Please enter name</span><br>
+					<button  onClick="register();"> Start Game </button>
+				</p>
+			</div>
+         </div>
+   </body>
+</html>

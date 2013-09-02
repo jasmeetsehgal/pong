@@ -1,0 +1,322 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+	<head>
+		<title>SWFObject 2 dynamic publishing example page</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+		<script type="text/javascript" src="swfobject.js"></script>
+		
+		 <style type="text/css">
+		 body{
+			font-family:Arial, Helvetica, sans-serif; 
+		 }
+		  
+		  #container{
+			  width:1024px;
+			  height:724px;
+			  position:relative;
+			  margin:0 auto;
+			   background:url(bilboard6.png) top left no-repeat;
+			  }
+			  #data_recieved
+		  {
+		   height:100px;   
+		   overflow:auto;
+		  display:none;
+		  }
+		  #myContent{
+		  width:868px;
+		  height:528px;
+		  position:absolute;
+		  left:135px;
+		  top:32px;		  
+		  }
+		
+		  body{
+		  overflow:hidden;
+		  }
+		  #users{
+			  
+		}
+		#users ul {
+			width:118px;
+			  height:100%;
+			margin:0;
+			padding:0;
+			list-style:none;
+			font-size:12px;
+			}
+			#users ul.queue {
+				position:absolute;
+				top:92px;
+				left:0;
+			}
+			.queue span.name{
+				width: 86px;
+				float: left;
+				padding-left: 8px;
+				margin-right:2px;
+			}
+			.queue span.queueno{
+				width: 22px;
+				float: left;
+				text-align:left;
+			}
+			#users ul.leaderboard {
+				position:absolute;
+				top:330px;
+				left:0;
+			}
+			.leaderboard span.name{
+				width: 62px;
+				float: left;
+				padding-left: 8px;
+				margin-right:1px;
+			}
+			.leaderboard span.time{
+				width: 18px;
+				float: left;
+				text-align:center;
+				margin-right:2px;
+			}
+			.leaderboard span.point{
+				width: 25px;
+				float: left;
+				text-align:center;
+			}
+      </style>
+	  
+	</head>
+	<body>
+   	<div id="container">
+   	   <div id="users">
+       		<ul class="queue">
+            </ul>
+            <ul class="leaderboard">
+            </ul>
+       </div>
+   	   	<div id="myContent">
+   	     
+   	   		<div id="pingGame">
+   	   		<h1>Alternative content</h1>
+   	   		<p><a href="http://www.adobe.com/go/getflashplayer"><img src="http://www.adobe.com/images/shared/download_buttons/get_flash_player.gif" alt="Get Adobe Flash player" /></a></p>
+   	   	</div></div>
+   	   	<div style="clear:both;"><br/></div>
+   	 </div>
+		<p id="data_recieved"></p>
+		<!-- <input type="range" min="40" max="748" value="388" step="1" onchange="showValue(this.value)" />
+        <span id="range">0</span>-->
+        <script type="text/javascript">
+		var flashvars = {
+			
+			};
+			var params = {
+						  menu: "false",
+						  wmode:'transparent'
+		  };
+			var attributes = {
+						  
+			};
+
+		swfobject.embedSWF("pong_as3.swf", "pingGame", "868", "528", "9.0.0", "expressInstall.swf",flashvars, params, attributes);
+
+		function thisMovie(movieName) {
+			if (navigator.appName.indexOf("Microsoft") != -1) {
+					return window[movieName];
+				} else {
+					return document[movieName];
+				}
+			}
+            
+			function showValue(newValue) {
+                document.getElementById("range").innerHTML = newValue;
+				//console.log(thisMovie("myContent"));
+				thisMovie("pingGame").movePaddle(newValue);
+			}
+			
+			function parseObject(obj){
+			var str=""
+			for(var i in obj){
+				str += i +" "+obj[i] + " , ";
+				}
+				return str;
+		}
+		function formatNum($num) {			
+			if(($num % 100) != 11 && ($num % 100) != 12  && ($num % 100) != 13 ){				
+					switch ($num % 10) {
+				        case 1:  return $num+'st';
+				        case 2:  return $num+'nd';
+				        case 3:  return $num+'rd';
+				      }
+					}
+				return $num+'th';
+			  }
+function updateUsers(data){
+	
+			var users_str="";
+			for(var i in data.clients){
+				if(i == 0){
+					//users_str += "Game Active";
+					//continue;
+				}else if(i == 1){
+					users_str += "<li><span class='name'>"+data.clients[i].cname+"</span><span class='queueno'>play</span></li>";
+				}else if(i <= 6){
+				users_str += "<li><span class='name'>"+data.clients[i].cname+"</span><span class='queueno'>"+ formatNum(i-1)+"</span></li>";
+					}else{
+						break;
+						}
+			}
+			$("#users .queue").html(users_str);
+			 leaderBoard("","","");
+			}
+function calcQueue(clientsID){
+			var ind=-2;
+				for(var i in clientsID){
+					ind++;
+					if(clientsID[i].id == myid){
+							return formatNum(ind);	
+						}
+					}
+				return formatNum(ind);	
+			}
+
+        </script>
+		
+	  <script src="http://banners.stageweb01.alphasalmonstaging.com/Jass/socket.io-client/dist/socket.io.js"></script>
+      <script src="http://code.jquery.com/jquery-1.6.2.min.js"></script>
+      <script type="text/javascript">
+	  WEB_SOCKET_DEBUG = true;
+         var myname = 'GameClient_Computer';
+		 var myid="";
+		 
+         var playername = '';
+		 var playerId="";	
+		 
+		 	 
+         var socket = io.connect('http://203.174.170.179:8080/pingpong',{
+  'reconnect': true,
+  'reconnection delay': 100,
+  'max reconnection attempts': 10000
+});
+       
+	   // check for conne else reload the page
+	   var setIntervalForReconnect = setInterval(function(){	
+  		if(!socket.socket.open){
+  			window.location.href=window.location.href;
+  		}
+		},(60000*10));
+	   
+         $(document).ready(function(){
+			$("p#data_recieved").append('dock ready ::: ');
+            
+         });
+		 
+		 socket.on('connect', function () {
+			  socket.emit('register', myname );
+			 
+		 });
+		 
+		socket.on('message', function (data) {
+			$("p#data_recieved").prepend('<br/> message ::: '+parseObject(data));
+		  if (data.msg == 'GAMESTART') {
+				playername=data.plname;
+				playerId=data.plsid;
+				thisMovie("pingGame").startGame(playername);
+			}else if(data.msg == "CPLAYER_DISCONNECT"){
+				}else if(data.msg == "QUEUE_NO"){	
+				}else{		
+			 	}            
+	        });
+			
+        socket.on('disconnect', function () {
+		/*setTimeout(function(){	
+  		if(!socket.socket.open){
+  			window.location.href=window.location.href;
+  		}
+		},70000);*/
+		alert('me disconnect');
+		$("p#data_recieved").append('disconnected ::: ');		
+			thisMovie("pingGame").stopGame();
+			updateUsers({clients:[]});
+			gameOver(1);
+            //alert('you are disconnect');
+        });
+		
+        socket.on('register', function (data) {			
+			myname = data.name;
+			myid = data.sid;			
+            $("p#data_recieved").prepend('<br/> register ' +data.name + ': ' + data.sid);
+			updateUsers(data);
+		});
+		
+		socket.on('unregister', function (data) {
+            $("p#data_recieved").prepend('<br/> unregister ' +data.name + ': ' + data.sid+ ': pl- Id  ' +playerId);
+			updateUsers(data);
+			if(data.sid == playerId){
+				 $("p#data_recieved").prepend('<br/> stop game show video')
+				 playername=0;
+				 playerId=0;
+				 thisMovie("pingGame").stopGame();		 
+			}		
+			
+		});
+		
+		
+		socket.on('posData', function (data) {
+			if(data.sid == playerId){
+           		//$("p#data_recieved").append(data.msgr + ': ' + data.msg);
+				thisMovie("pingGame").movePaddle(data.msg);
+			}
+        });
+				
+		function gameOver(windex,points){
+			
+			if(windex == 0){
+				$("p#data_recieved").prepend('<br/>' + 'You are the winner');
+				socket.emit('winner', {
+				name:playername,
+				id:playerId});	
+			}
+			socket.send('GAMEOVER');			
+			 playername=0;
+			 playerId=0;
+			 thisMovie("pingGame").stopGame();
+		}
+	
+		function updateleaderBoard(list){
+			var _lst="";
+			var len=list.length > 6?6:list.length;
+			for(var i=0;i<len;i++){				
+					_lst += "<li><span class='name'>"+list[i].name+"</span><span class='time'>"+list[i].time+"S</span><span class='point'>"+list[i].points+"P</span></li>";				
+			}
+			$("#users .leaderboard").html(_lst);
+		}
+		
+		function leaderBoard(_name,_points,_time){
+			var _leaderBoard = [];
+			if(localStorage.getItem('_leaderBoard')){
+				_leaderBoard=JSON.parse(localStorage.getItem('_leaderBoard'));				
+			}
+			
+			if(_name != ''){
+				_leaderBoard.push({name:_name,points:_points,time:(60-_time)});
+				localStorage.setItem('_leaderBoard',JSON.stringify(_leaderBoard));				
+			}
+			
+			_leaderBoard.sort(sortByTimeThenPoint);
+			_leaderBoard.reverse();
+			updateleaderBoard(_leaderBoard);
+			}
+			
+			function sortByTimeThenPoint(a, b) {
+				var x = a.time;
+				var y = b.time;
+				return ((x > y) ? -1 : ((x < y) ? 1 : sortByPoints(a, b)));
+				} 
+			function sortByPoints(a, b){
+				 return a.points-b.points
+				}
+				
+      </script>
+		<!--<a href="javascript:gameOver(1);window.location.href=window.location.href;">disconnect</a>-->
+	</body>
+</html>
